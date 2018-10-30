@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Outputs
-working_dir=new
+working_dir=`mktemp -d -p $PWD`
 out_dir_worker_1=worker-1
 out_dir_worker_2=worker-2
 out_dir_graph=graph
 
-mkdir -p $working_dir
-
+echo "Working directory: $working_dir"
 cd $working_dir
+mkdir $out_dir_worker_1 $out_dir_worker_2 $out_dir_graph
 
 # Program parameters
 PROG=$MIR_ROOT/examples/OMP/fib/fib-opt.out
@@ -24,18 +24,6 @@ MEMPOL=system
 comp_inst_par=1
 
 echo "Profiling on 1 worker ..."
-if [ -d $out_dir_worker_1 ]; then
-    echo "Directory $out_dir_worker_1 exists. Making a backup copy ..."
-    if [ -d $out_dir_worker_1.backup ]; then
-        echo "Directory $out_dir_worker_1.backup exists. Aborting!"
-        exit
-    fi
-    mv $out_dir_worker_1 $out_dir_worker_1.backup
-    echo "Moved $out_dir_worker_1 to $out_dir_worker_1.backup"
-fi
-
-mkdir $out_dir_worker_1
-
 touch timestamp
 
 MIR_CONF="--workers=1 --schedule=$SCHED --stack-size=$STACK --memory-policy=$MEMPOL --single-parallel-block --worker-stats --task-stats -r" ${PROG} ${INPUT}
@@ -49,18 +37,6 @@ Rscript ${MIR_ROOT}/scripts/profiling/task/process-task-stats.R -d task-stats.me
 find . -maxdepth 1 -type f -newer timestamp -exec mv {} $out_dir_worker_1 \;
 
 echo "Profiling on 2 workers ..."
-if [ -d $out_dir_worker_2 ]; then
-    echo "Directory $out_dir_worker_2 exists. Making a backup copy ..."
-    if [ -d $out_dir_worker_2.backup ]; then
-        echo "Directory $out_dir_worker_2.backup exists. Aborting!"
-        exit
-    fi
-    mv $out_dir_worker_2 $out_dir_worker_2.backup
-    echo "Moved $out_dir_worker_2 to $out_dir_worker_2.backup"
-fi
-
-mkdir -p $out_dir_worker_2
-
 touch timestamp
 
 MIR_CONF="--workers=2 --schedule=$SCHED --stack-size=$STACK --memory-policy=$MEMPOL --single-parallel-block --worker-stats --task-stats -r" ${PROG} ${INPUT}
@@ -78,18 +54,6 @@ Rscript ${MIR_ROOT}/scripts/profiling/task/merge-task-stats.R -l task-stats.proc
 find . -maxdepth 1 -type f -newer timestamp -exec mv {} $out_dir_worker_2 \;
 
 echo "Plotting grain graph ..."
-if [ -d $out_dir_graph ]; then
-    echo "Directory $out_dir_graph exists. Making a backup copy ..."
-    if [ -d $out_dir_graph.backup ]; then
-        echo "Directory $out_dir_graph.backup exists. Aborting!"
-        exit
-    fi
-    mv $out_dir_graph $out_dir_graph.backup
-    echo "Moved $out_dir_graph to $out_dir_graph.backup"
-fi
-
-mkdir -p $out_dir_graph
-
 touch timestamp
 
 if [ $comp_inst_par -eq 1 ]
